@@ -1,0 +1,251 @@
+// /*
+//  * Wazuh app - React component for building the agents table.
+//  *
+//  * Copyright (C) 2015-2020 Wazuh, Inc.
+//  *
+//  * This program is free software; you can redistribute it and/or modify
+//  * it under the terms of the GNU General Public License as published by
+//  * the Free Software Foundation; either version 2 of the License, or
+//  * (at your option) any later version.
+//  *
+//  * Find more information about this on the LICENSE file.
+//  */
+
+import React, { Component, Fragment, useState, useEffect } from 'react';
+import PropTypes from 'prop-types';
+import {
+  EuiBasicTable,
+  EuiButton,
+  EuiButtonEmpty,
+  EuiButtonIcon,
+  EuiFlexGroup,
+  EuiFlexItem,
+  EuiPanel,
+  EuiToolTip,
+  EuiTitle,
+  EuiHealth,
+  EuiSpacer,
+  EuiCallOut,
+  EuiOverlayMask,
+  EuiConfirmModal,
+  EuiLoadingSpinner
+} from '@elastic/eui';
+import { toastNotifications } from 'ui/notify';
+import { WzRequest } from '../../../react-services/wz-request';
+import { NidsRequest } from '../../../react-services/nids-request';
+import { ActionAgents } from '../../../react-services/action-agents';
+import { AppNavigate } from '../../../react-services/app-navigate';
+import { GroupTruncate } from '../../../components/common/util';
+import { WzSearchBar, filtersToObject } from '../../../components/wz-search-bar';
+import { getAgentFilterValues } from '../../../controllers/management/components/management/groups/get-agents-filters-values';
+import { WzButtonPermissions } from '../../../components/common/permissions/button';
+import { ManageNidsHosts } from '../../../../server/lib/manage-nids-hosts';
+// import { EuiFlexItem, EuiFlexGroup, EuiSideNav, EuiIcon, EuiButtonEmpty, EuiToolTip } from '@elastic/eui';
+import NidsAddNode from './nids-add-node'
+import chrome from 'ui/chrome';
+import axios from 'axios';
+import { log } from '../../../../server/logger';
+import { connect } from 'react-redux';
+import { compose } from 'redux';
+import { toggleAddNodeMenu, getAllNodes } from '../../../redux/actions/nidsActions';
+import { useSelector, useDispatch } from 'react-redux';
+import { withReduxProvider, withGlobalBreadcrumb, withUserAuthorizationPrompt } from '../../../components/common/hocs';
+import { MDeleteNode } from '../../../react-services/nids-middleware';
+
+export const NidsTable = withReduxProvider(() => {
+  const dispatch = useDispatch();
+  const addNodeForm = useSelector(state => state.nidsReducers.addNodeForm);
+  const nodes = useSelector(state => state.nidsReducers.nodes);
+
+  const [newNodesList, setNewNodesList] = useState([])
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => { 
+    loadNodes() 
+  }, []);
+
+  useEffect(() => { 
+    var nids = []
+    const formatedNodes = (nodes || []).map(node => {
+      nids.push(formatNode(node))
+    });      
+      //save nodes formated into array
+      setNewNodesList(nids)    
+      setIsLoading(false)
+  }, [nodes]);
+
+  //load header for table
+  const title = headRender();
+
+  const MGetAllNodes = async () =>{
+    setIsLoading(true)
+    // const nodes = await NidsRequest.genericReq('GET', '/nids/nodes', {});
+    // dispatch(getAllNodes(nodes.data.data))
+    dispatch(getAllNodes())
+    // getAllNodes()
+    // setIsLoading(false)
+  };
+  
+  const MDeleteNode = async(params) => {
+    setIsLoading(true)
+    const data = await NidsRequest.genericReq('PUT', '/nids/node/delete', params);  
+    // MGetAllNodes()
+    getAllNodes()
+  }
+
+  function actionButtonsRender(node) {
+    return (
+      <div className={'icon-box-action'}>
+        <EuiToolTip content="Manage node" position="left">
+          <EuiButtonIcon
+            onClick={ev => {
+            }}
+            iconType="eye"
+            color={'primary'}
+            aria-label="Label nodes"
+          />
+        </EuiToolTip>
+
+        <EuiToolTip content="Delete node" position="left">
+          <EuiButtonIcon
+            onClick={ev => {
+              var params = {
+                method: "DELETE",
+                path: `/node/${node.uuid}`
+              }              
+              MDeleteNode(params)
+            }}
+            iconType="trash"
+            color={'danger'}
+            aria-label="Label Delete node"
+          />
+        </EuiToolTip>
+      </div>
+    );
+  }
+
+  async function loadNodes() {
+    try{
+      console.log("load nodes nids-table");
+      MGetAllNodes()
+
+    }catch(error){
+      setIsLoading(false)
+    }
+  }
+
+  function formatNode(node) {
+    return {
+      ...node,
+      actions: node
+    };
+  }
+
+  function headRender() {
+    return (
+      <div>
+        <EuiFlexGroup>
+          <EuiFlexItem>
+            <EuiFlexGroup>
+              <EuiFlexItem>
+                  <EuiTitle size={'s'} style={{ padding: '6px 0px' }}>
+                    <h2>Nodes list </h2>
+                  </EuiTitle>
+              </EuiFlexItem>
+            </EuiFlexGroup>
+          </EuiFlexItem>
+          <EuiFlexItem grow={false}>
+            <WzButtonPermissions
+              buttonType='empty'
+              permissions={[{ action: 'agent:create', resource: '*:*:*' }]}
+              iconType="plusInCircle"
+              onClick={() => {
+                  dispatch(toggleAddNodeMenu(true));
+                }
+              }
+            >
+              Add new node
+            </WzButtonPermissions>
+          </EuiFlexItem>
+        </EuiFlexGroup>
+        <EuiSpacer size="xs" />
+      </div>
+    );
+  }
+
+  function columns() {
+    return [
+      {
+        field: 'name',
+        name: 'Name',
+        sortable: true,
+        width: '20%',
+        // truncateText: true
+      },
+      {
+        field: 'ip',
+        name: 'IP',
+        width: '15%',
+        // truncateText: true,
+        sortable: true
+      },
+      {
+        field: 'status',
+        name: 'Status',
+        width: '10%',
+        // truncateText: true,
+        sortable: true
+      },
+      {
+        field: 'port',
+        name: 'PORT',
+        width: '10%',
+        // truncateText: true,
+        sortable: true
+      },
+      {
+        field: 'tags',
+        name: 'Tag(s)',
+        width: '15%',
+        // truncateText: true,
+        sortable: true
+      },
+      {
+        field: 'orgs',
+        name: 'Org(s)',
+        width: '15%',
+        // truncateText: true,
+        sortable: true
+      },
+      {
+        field: 'actions',
+        name: 'Actions',
+        width: '15%',
+        render: node => actionButtonsRender(node)
+      }
+    ];
+  }
+
+  
+  return (
+    <div>
+    { addNodeForm==true ? <NidsAddNode /> : null }    
+
+      <EuiSpacer size="m" />
+      <EuiPanel paddingSize="m">
+        {title}
+        <EuiFlexGroup>
+          <EuiFlexItem>
+            <EuiBasicTable
+              items={newNodesList}
+              itemId="uuid"
+              columns={columns()}
+              loading={isLoading}
+            />
+          </EuiFlexItem>
+        </EuiFlexGroup>
+      </EuiPanel>
+    </div>
+  );
+}
+);
