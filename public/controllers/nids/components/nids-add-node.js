@@ -16,6 +16,7 @@ import {
   EuiOverlayMask,
   EuiConfirmModal,
   EuiDescribedFormGroup,
+  EuiFieldPassword,
   EuiLoadingSpinner,
   EuiFlexGrid,
   EuiFieldText,
@@ -38,13 +39,17 @@ import { NidsRequest } from '../../../react-services/nids-request';
 // import axios from 'axios';
 // import { log } from '../../../../server/logger';
 // import { connect } from 'react-redux';
-import { toggleAddNodeMenu } from '../../../redux/actions/nidsActions';
+import { toggleAddNodeMenu, addNode, editNode, nodeForEdit } from '../../../redux/actions/nidsActions';
 // import { withReduxProvider, withGlobalBreadcrumb, withUserAuthorizationPrompt } from '../../../components/common/hocs';
 import { useSelector, useDispatch } from 'react-redux';
 // import { compose } from 'redux';
 
-
 const NidsAddNode = () => {
+  const nodes = useSelector(state => state.nidsReducers.nodes);
+  const nodeToEdit = useSelector(state => state.nidsReducers.nodeToEdit);
+  const addNodeForm = useSelector(state => state.nidsReducers.addNodeForm);
+
+  const dispatch = useDispatch();  
   const [newNodeData, setNewNodeData] = useState({
     name: "",
     ip: "",
@@ -53,7 +58,23 @@ const NidsAddNode = () => {
     nodepass: "",
     agent: ""
   })
-  const dispatch = useDispatch();
+
+  useEffect(() => { 
+    if(nodeToEdit != ""){
+      nodes.map(x => {
+        if(nodeToEdit == x.uuid){
+          setNewNodeData({
+            name: x.name,
+            ip: x.ip,
+            port: x.port,
+            nodeuser: x.nodeuser,
+            nodepass: x.nodepass,
+            agent: x.agent
+          })  
+        }      
+      })
+    }
+  }, []);
 
   const handleRequest = () => {
     const enrollData = {
@@ -62,16 +83,14 @@ const NidsAddNode = () => {
       Group:[],
       Orgs:[],
       Suricata:{}
-  }
-    var params = {
-      method: "POST",
-      path: '/node/enrollNewNode',
-      data: enrollData
     }
-    NidsRequest.genericReq('POST', '/nids/node/enroll', params)
+    {
+      nodeToEdit != "" ? 
+      dispatch(editNode(enrollData)):
+      dispatch(addNode(enrollData))    
+    }
   }
   
-
   const handleChangeEdit = (e) => {
     setNewNodeData({            
         ...newNodeData,
@@ -88,7 +107,11 @@ const NidsAddNode = () => {
             <EuiFlexGroup>
               <EuiFlexItem>
                   <EuiTitle size={'s'} style={{ padding: '6px 0px' }}>
-                    <h2>Add node </h2>
+                    {
+                      nodeToEdit != "" ? 
+                      <h2>Edit node </h2> :
+                      <h2>Add node </h2> 
+                    }
                   </EuiTitle>
               </EuiFlexItem>
             </EuiFlexGroup>
@@ -99,6 +122,7 @@ const NidsAddNode = () => {
               iconType="cross"
               onClick={() => {
                   dispatch(toggleAddNodeMenu(false));
+                  dispatch(nodeForEdit(""))
                 }
               }
             >
@@ -111,7 +135,11 @@ const NidsAddNode = () => {
         <EuiFlexGroup>
           <EuiFlexItem>
             <EuiFormRow label="Node name">
-              <EuiFieldText name="name" aria-label="Node name" onChange={handleChangeEdit}/>
+              {
+                nodeToEdit != "" ? 
+                <EuiFieldText value={newNodeData.name || ''} name="name" aria-label="Node name" onChange={handleChangeEdit ||''}/>:
+                <EuiFieldText name="name" aria-label="Node name" onChange={handleChangeEdit ||''}/>
+              }
             </EuiFormRow>
           </EuiFlexItem>
         </EuiFlexGroup>
@@ -119,12 +147,20 @@ const NidsAddNode = () => {
         <EuiFlexGroup>
           <EuiFlexItem>
             <EuiFormRow label="Node IP">
-              <EuiFieldText name="ip" aria-label="Node IP" onChange={handleChangeEdit}/>
+              {
+                nodeToEdit != "" ? 
+                <EuiFieldText value={newNodeData.ip || ''} name="ip" aria-label="Node IP" onChange={handleChangeEdit ||''}/>:
+                <EuiFieldText name="ip" aria-label="Node IP" onChange={handleChangeEdit ||''}/>
+              }
             </EuiFormRow>
           </EuiFlexItem>
           <EuiFlexItem>
             <EuiFormRow label="Node port">
-              <EuiFieldText name="port" aria-label="Node port" onChange={handleChangeEdit}/>
+              {
+                nodeToEdit != "" ? 
+                <EuiFieldText value={newNodeData.port || ''} name="port" aria-label="Node port" onChange={handleChangeEdit ||''}/>:
+                <EuiFieldText name="port" aria-label="Node port" onChange={handleChangeEdit ||''}/>
+              }
             </EuiFormRow>
           </EuiFlexItem>
         </EuiFlexGroup>
@@ -132,12 +168,20 @@ const NidsAddNode = () => {
         <EuiFlexGroup>
           <EuiFlexItem>
             <EuiFormRow label="Node user">
-              <EuiFieldText name="nodeuser" aria-label="Node user" onChange={handleChangeEdit}/>
+              {
+                nodeToEdit != "" ? 
+                <EuiFieldText value={newNodeData.nodeuser || ''} name="nodeuser" aria-label="Node user" onChange={handleChangeEdit ||''}/>:
+                <EuiFieldText name="nodeuser" aria-label="Node user" onChange={handleChangeEdit ||''}/>
+              }
             </EuiFormRow>
           </EuiFlexItem>
           <EuiFlexItem>
             <EuiFormRow label="Node password">
-              <EuiFieldText name="nodepass" aria-label="Node password" onChange={handleChangeEdit}/>
+              {
+                nodeToEdit != "" ? 
+                <EuiFieldPassword value={newNodeData.nodepass || ''} name="nodepass" aria-label="Node password" onChange={handleChangeEdit ||''}/>:
+                <EuiFieldPassword name="nodepass" aria-label="Node password" onChange={handleChangeEdit ||''}/>
+              }
             </EuiFormRow>
           </EuiFlexItem>
         </EuiFlexGroup>
@@ -152,7 +196,13 @@ const NidsAddNode = () => {
         <EuiFlexGroup>
           <EuiFlexItem>
           <EuiFormRow label="Agent ID">
-              <EuiFieldText name="agent" aria-label="Agent ID" onChange={handleChangeEdit}/>
+            {/* {
+              nodeToEdit != "" ? 
+              <EuiFieldPassword value={newNodeData.nodepass} name="nodepass" aria-label="Node password" onChange={handleChangeEdit}/>:
+              <EuiFieldPassword name="nodepass" aria-label="Node password" onChange={handleChangeEdit}/>
+            } */}
+              <EuiFieldText value={newNodeData.agent || ''} name="agent" aria-label="Agent ID" onChange={handleChangeEdit || ''}/>
+
             </EuiFormRow>
           </EuiFlexItem>
         </EuiFlexGroup>
@@ -160,7 +210,11 @@ const NidsAddNode = () => {
         <EuiFlexGroup>
           <EuiFlexItem>
             <EuiFormRow>
-              <EuiButton onClick={() => {handleRequest()}}>Add</EuiButton>                
+              {
+                nodeToEdit != "" ? 
+                <EuiButton onClick={() => {handleRequest()}}>Edit</EuiButton>:
+                <EuiButton onClick={() => {handleRequest()}}>Add</EuiButton>                
+              }
             </EuiFormRow>
           </EuiFlexItem>
         </EuiFlexGroup>

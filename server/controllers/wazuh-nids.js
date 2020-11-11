@@ -90,4 +90,17 @@ export class WazuhNidsCtrl {
     }
   }
 
+  async editNode(req, reply) {
+    try {
+      const data = await this.manageNidsHosts.editNode(req.payload);      
+      return {
+        statusCode: 200,
+        error: 0,
+        data: []
+      };
+    } catch (error) {
+      return ErrorResponse(error.message || error, 3019, 500, reply);
+    }
+  }
+
 }

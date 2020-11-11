@@ -47,10 +47,9 @@ import axios from 'axios';
 import { log } from '../../../../server/logger';
 import { connect } from 'react-redux';
 import { compose } from 'redux';
-import { toggleAddNodeMenu, getAllNodes } from '../../../redux/actions/nidsActions';
+import { toggleAddNodeMenu, getAllNodes, deleteNode, nodeForEdit } from '../../../redux/actions/nidsActions';
 import { useSelector, useDispatch } from 'react-redux';
 import { withReduxProvider, withGlobalBreadcrumb, withUserAuthorizationPrompt } from '../../../components/common/hocs';
-import { MDeleteNode } from '../../../react-services/nids-middleware';
 
 export const NidsTable = withReduxProvider(() => {
   const dispatch = useDispatch();
@@ -69,29 +68,13 @@ export const NidsTable = withReduxProvider(() => {
     const formatedNodes = (nodes || []).map(node => {
       nids.push(formatNode(node))
     });      
-      //save nodes formated into array
-      setNewNodesList(nids)    
-      setIsLoading(false)
+    //save nodes formated into array
+    setNewNodesList(nids)    
+    setIsLoading(false)
   }, [nodes]);
 
   //load header for table
   const title = headRender();
-
-  const MGetAllNodes = async () =>{
-    setIsLoading(true)
-    // const nodes = await NidsRequest.genericReq('GET', '/nids/nodes', {});
-    // dispatch(getAllNodes(nodes.data.data))
-    dispatch(getAllNodes())
-    // getAllNodes()
-    // setIsLoading(false)
-  };
-  
-  const MDeleteNode = async(params) => {
-    setIsLoading(true)
-    const data = await NidsRequest.genericReq('PUT', '/nids/node/delete', params);  
-    // MGetAllNodes()
-    getAllNodes()
-  }
 
   function actionButtonsRender(node) {
     return (
@@ -106,29 +89,36 @@ export const NidsTable = withReduxProvider(() => {
           />
         </EuiToolTip>
 
+        <EuiToolTip content="Edit node" position="left">
+          <EuiButtonIcon
+            onClick={ev => {               
+              dispatch(toggleAddNodeMenu(true))
+              dispatch(nodeForEdit(node.uuid))
+            }}
+            iconType="pencil"
+            color={'primary'}
+            aria-label="Edit node"
+          />
+        </EuiToolTip>
+
         <EuiToolTip content="Delete node" position="left">
           <EuiButtonIcon
-            onClick={ev => {
-              var params = {
-                method: "DELETE",
-                path: `/node/${node.uuid}`
-              }              
-              MDeleteNode(params)
+            onClick={ev => {                             
+              dispatch(deleteNode(node.uuid))
+              
             }}
             iconType="trash"
             color={'danger'}
             aria-label="Label Delete node"
           />
-        </EuiToolTip>
+        </EuiToolTip>        
       </div>
     );
   }
 
   async function loadNodes() {
     try{
-      console.log("load nodes nids-table");
-      MGetAllNodes()
-
+      dispatch(getAllNodes())
     }catch(error){
       setIsLoading(false)
     }
@@ -157,7 +147,7 @@ export const NidsTable = withReduxProvider(() => {
           <EuiFlexItem grow={false}>
             <WzButtonPermissions
               buttonType='empty'
-              permissions={[{ action: 'agent:create', resource: '*:*:*' }]}
+              // permissions={[{ action: 'agent:create', resource: '*:*:*' }]}
               iconType="plusInCircle"
               onClick={() => {
                   dispatch(toggleAddNodeMenu(true));

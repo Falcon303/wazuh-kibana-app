@@ -144,8 +144,43 @@ export class ManageNidsHosts {
     }
   }
 
-  //Delete node
+  //add node
   async enrollNode(req) {
+    try{
+      //check credentials
+      if((NIDStoken == "" || NIDStoken == null) || (NIDSuser == "" || NIDSuser == null)){
+        await this.getNidsCredentials()
+      }
+
+      //get active master and basic url
+      const url = this.getActiveMasterURL()
+
+      const options = {
+        method: req.method,
+        headers: {
+          'content-type': 'application/json',
+          'token': NIDStoken,
+          'user': NIDSuser
+        },
+        url: `${url}${req.path}`,
+        data: JSON.stringify(req.data)
+      };
+      const response = await axios(options);
+      
+      if(response.data.ack === "false"){
+        log('manage-nids-hosts:deleteNode', `${response.data.error}`, 'error');
+        return response.data.error
+      }
+            
+      return null
+
+    } catch (error) {
+      throw error;
+    }
+  }
+
+  //edit node
+  async editNode(req) {
     try{
       //check credentials
       if((NIDStoken == "" || NIDStoken == null) || (NIDSuser == "" || NIDSuser == null)){

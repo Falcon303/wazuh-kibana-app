@@ -32,6 +32,15 @@ export async function WazuhNidsRoutes(server) {
     }
   });
 
+  // Delete specific node
+  server.route({
+    method: 'PUT',
+    path: '/nids/node/editNode',
+    handler(req, reply) {      
+      return ctrl.editNode(req, reply);
+    }
+  });
+
   // Add new node
   server.route({
     method: 'POST',
